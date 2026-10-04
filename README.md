@@ -133,7 +133,7 @@ The app tries to pin itself automatically on launch once this is turned
 on; if it's off, the app still runs fine, it just won't resist someone
 swiping to recents or pulling down notifications.
 
-**Make it the default home screen (optional):** the manifest already
+**Make it the default home screen (optional, not recommended if you use your device for multiple purposes):** the manifest already
 declares the `HOME` category, so Android will ask "Use Amp Kiosk as your
 Home app?" the next time you press the home button, or you can set it
 directly in Settings → Apps → Default apps → Home app. This means the
@@ -149,7 +149,7 @@ apps that have never been opened - if a fresh install doesn't auto-start
 after a reboot, open the app by hand once and every reboot after that
 should work.
 
-**Escape hatch:** five-tap the corner → "Exit kiosk" unpins the screen
+**Escape hatch:** five-tap the top-left corner → "Exit kiosk" unpins the screen
 and closes the app, or "Device settings" jumps straight to Android
 Settings without closing the app. Worth testing both once after setup,
 especially if you've also set the app as the default Home app, so you
