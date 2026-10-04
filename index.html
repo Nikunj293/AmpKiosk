@@ -1,0 +1,901 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#100D0A">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Amp</title>
+<style>
+/* ---------------------------------------------------------------------
+   Tokens
+--------------------------------------------------------------------- */
+:root{
+  --ink:#100D0A; --panel:#1B1712; --panel-2:#241F18;
+  --paper:#F3ECE0; --muted:#9C9184; --muted-2:#6b6255;
+  --copper:#D98F4E; --copper-dim:rgba(217,143,78,.16);
+  --signal:#6FA88C; --danger:#C2554A;
+  --divider:#332C22;
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--ink); color:var(--paper);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-tap-highlight-color:transparent; user-select:none;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+button,input{font:inherit;color:inherit}
+button{appearance:none;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
+input[type=range]{accent-color:var(--copper)}
+img{-webkit-user-drag:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.icon{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon.filled{fill:currentColor;stroke:none}
+
+/* ---------------------------------------------------------------------
+   Top bar
+--------------------------------------------------------------------- */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 20px; gap:16px;
+}
+.wordmark{display:flex;align-items:center;gap:10px;min-width:0}
+.wordmark svg{width:22px;height:22px;color:var(--copper)}
+.wordmark .name{font-size:1.15rem;font-weight:800;letter-spacing:-.01em}
+.wordmark .as{color:var(--muted-2);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-actions{display:flex;gap:6px;flex:none}
+.tb-btn{
+  width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  color:var(--muted); transition:background .15s,color .15s;
+}
+.tb-btn:active{background:var(--panel-2);color:var(--paper)}
+.tb-btn.active{color:var(--copper);background:var(--copper-dim)}
+.tb-btn.armed{color:var(--danger);background:rgba(194,85,74,.16)}
+
+/* ---------------------------------------------------------------------
+   Layout
+--------------------------------------------------------------------- */
+#view{padding:4px 20px 28px;max-width:1180px;margin:0 auto}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,340px);gap:32px;align-items:start}
+@media (max-width:880px){.stage{grid-template-columns:1fr}}
+
+/* ---------------------------------------------------------------------
+   Login
+--------------------------------------------------------------------- */
+.login-wrap{min-height:70vh;display:flex;align-items:center;justify-content:center;text-align:center}
+.login-card{max-width:380px}
+.login-mark{width:52px;height:52px;color:var(--copper);margin:0 auto 18px}
+.login-title{font-size:2rem;font-weight:800;letter-spacing:-.02em;margin:0 0 10px}
+.login-text{color:var(--muted);margin:0 0 28px;line-height:1.5}
+.connect-btn{
+  display:inline-flex;align-items:center;gap:10px;background:#1ed760;color:#04150a;
+  font-weight:700;padding:14px 26px;border-radius:100px;text-decoration:none;
+}
+.connect-btn:active{background:#19b652}
+.login-error{color:var(--danger);margin-top:16px;font-size:.85rem}
+
+/* ---------------------------------------------------------------------
+   Hero (now playing)
+--------------------------------------------------------------------- */
+.hero{display:flex;gap:26px;align-items:flex-start}
+.art-frame{
+  width:clamp(180px,30vw,340px);aspect-ratio:1/1;flex:none;border-radius:16px;overflow:hidden;
+  background:var(--panel);border:1px solid var(--divider);
+  box-shadow:0 10px 26px rgba(0,0,0,.35);
+}
+.art-frame img{width:100%;height:100%;object-fit:cover;display:block}
+.art-frame .art-empty{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted-2)}
+.art-empty svg{width:44px;height:44px}
+
+.track-info{min-width:0;flex:1;padding-top:6px}
+.track-title{font-size:clamp(1.5rem,3.2vw,2.15rem);font-weight:800;letter-spacing:-.02em;line-height:1.12;
+  overflow-wrap:anywhere;margin:0}
+.track-artist{font-size:1.05rem;color:var(--muted);margin:8px 0 0;overflow-wrap:anywhere}
+.device-pill{
+  display:inline-flex;align-items:center;gap:7px;color:var(--muted-2);margin-top:16px;
+  font-size:.82rem;padding:6px 4px;border-radius:8px;
+}
+.device-pill svg{width:15px;height:15px}
+.device-pill:active{background:var(--panel-2)}
+
+.progress-row{display:flex;align-items:center;gap:10px;margin-top:20px;color:var(--muted-2);font-size:.78rem;
+  font-variant-numeric:tabular-nums}
+.progress-row input{flex:1;width:100%}
+
+.transport{display:flex;align-items:center;gap:10px;margin-top:18px}
+.transport .spacer{flex:1}
+.tr-btn{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--paper)}
+.tr-btn:active{background:var(--panel-2)}
+.tr-btn.main{width:60px;height:60px;background:var(--paper);color:var(--ink)}
+.tr-btn.main:active{background:#d8d2c4}
+.tr-btn.main .icon{width:24px;height:24px}
+.toggle-btn{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted-2)}
+.toggle-btn .icon{width:18px;height:18px}
+.toggle-btn.on{color:var(--copper)}
+.toggle-btn:active{background:var(--panel-2)}
+
+.volume-row{display:flex;align-items:center;gap:12px;margin-top:22px;max-width:420px}
+.volume-row button{color:var(--muted);flex:none}
+.volume-row input{flex:1}
+.volume-value{width:32px;text-align:right;color:var(--muted-2);font-size:.78rem;font-variant-numeric:tabular-nums}
+
+.like-btn{display:inline-flex;align-items:center;gap:7px;color:var(--muted-2);margin-top:20px;padding:8px 4px;border-radius:8px;font-size:.85rem}
+.like-btn:active{background:var(--panel-2)}
+.like-btn.saved{color:var(--signal)}
+.like-btn.saved .icon{fill:currentColor}
+.like-btn .icon{width:17px;height:17px}
+
+/* ---------------------------------------------------------------------
+   Current device bar (below player)
+--------------------------------------------------------------------- */
+.device-bar{
+  display:flex;align-items:center;gap:14px;margin-top:26px;padding:14px 16px;
+  background:var(--panel);border:1px solid var(--divider);border-radius:var(--radius);
+  text-align:left;width:100%;
+}
+.device-bar:active{background:var(--panel-2)}
+.device-bar .db-icon{
+  width:40px;height:40px;border-radius:10px;background:var(--panel-2);display:flex;align-items:center;
+  justify-content:center;flex:none;color:var(--muted-2);
+}
+.device-bar.is-active .db-icon{color:var(--signal);background:rgba(111,168,140,.14)}
+.device-bar .db-body{flex:1;min-width:0}
+.device-bar .db-name{font-size:.92rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.device-bar .db-sub{font-size:.78rem;color:var(--muted-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.device-bar .db-status{
+  display:flex;align-items:center;gap:6px;font-size:.76rem;color:var(--muted-2);flex:none;
+}
+.device-bar.is-active .db-status{color:var(--signal)}
+.device-bar .db-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.device-bar .db-change{color:var(--muted-2);flex:none}
+.device-bar .db-change .icon{width:17px;height:17px}
+
+/* ---------------------------------------------------------------------
+   Up next rail
+--------------------------------------------------------------------- */
+.rail-title{font-size:.95rem;font-weight:700;color:var(--paper);margin:2px 0 14px}
+.rail-list{display:flex;flex-direction:column}
+.rail-item{
+  display:flex;align-items:center;gap:11px;padding:9px 4px;border-bottom:1px solid var(--divider);
+  width:100%;text-align:left;border-radius:8px;position:relative;
+}
+.rail-item:last-child{border-bottom:0}
+.rail-item:active{background:var(--panel-2)}
+.rail-thumb-wrap{position:relative;flex:none;width:42px;height:42px}
+.rail-thumb{width:42px;height:42px;border-radius:7px;object-fit:cover;background:var(--panel);display:block}
+.rail-play-overlay{
+  position:absolute;inset:0;border-radius:7px;background:rgba(16,13,10,.55);
+  display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s;color:var(--paper);
+}
+.rail-item:hover .rail-play-overlay,.rail-item:active .rail-play-overlay{opacity:1}
+.rail-play-overlay .icon{width:16px;height:16px}
+.rail-info{min-width:0;flex:1}
+.rail-title-text{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rail-sub{font-size:.78rem;color:var(--muted-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rail-queue-btn{width:32px;height:32px;border-radius:50%;color:var(--muted-2);display:flex;align-items:center;justify-content:center;flex:none}
+.rail-queue-btn:active{background:var(--panel-2);color:var(--paper)}
+.rail-queue-btn .icon{width:15px;height:15px}
+.rail-empty{color:var(--muted-2);font-size:.88rem;line-height:1.5;padding:6px 0}
+
+/* ---------------------------------------------------------------------
+   Search
+--------------------------------------------------------------------- */
+.search-bar{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--divider);
+  border-radius:12px;padding:4px 6px 4px 16px;margin:8px 0 26px;max-width:560px}
+.search-bar svg{width:18px;height:18px;color:var(--muted-2);flex:none}
+.search-bar input{flex:1;background:none;border:0;color:var(--paper);padding:12px 0;min-width:0}
+.search-bar input::placeholder{color:var(--muted-2)}
+.search-bar button{color:var(--muted);padding:10px 14px;font-size:.85rem;font-weight:700;flex:none}
+.search-status{color:var(--muted-2);font-size:.85rem;margin:-14px 0 18px}
+
+.sec-title{font-size:.95rem;font-weight:700;margin:0 0 12px}
+.sec{margin-bottom:30px}
+.song-list{display:flex;flex-direction:column}
+.song-row{display:flex;align-items:center;gap:12px;padding:9px 6px;border-radius:10px}
+.song-row:active{background:var(--panel-2)}
+.song-thumb{width:46px;height:46px;border-radius:7px;object-fit:cover;background:var(--panel);flex:none}
+.song-body{min-width:0;flex:1;text-align:left}
+.song-title{font-size:.9rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song-sub{font-size:.78rem;color:var(--muted-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song-actions{display:flex;gap:4px;flex:none}
+.song-actions button{width:36px;height:36px;border-radius:50%;color:var(--muted);display:flex;align-items:center;justify-content:center}
+.song-actions button:active{background:var(--panel-2);color:var(--paper)}
+.song-actions .icon{width:16px;height:16px}
+
+.shelf{display:flex;gap:16px;overflow-x:auto;padding-bottom:6px;margin:0 -20px;padding-left:20px;padding-right:20px}
+.shelf::-webkit-scrollbar{display:none}
+.shelf-item{flex:none;width:132px;text-align:left}
+.shelf-art{width:132px;height:132px;border-radius:10px;object-fit:cover;background:var(--panel);display:block}
+.shelf-item.is-artist .shelf-art{border-radius:50%}
+.shelf-name{font-size:.85rem;font-weight:600;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shelf-sub{font-size:.76rem;color:var(--muted-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty-state{color:var(--muted-2);font-size:.9rem;line-height:1.6}
+
+/* ---------------------------------------------------------------------
+   Device panel
+--------------------------------------------------------------------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .18s;z-index:20;
+}
+@media (min-width:640px){.overlay{align-items:center}}
+.overlay.open{opacity:1;pointer-events:auto}
+.sheet{
+  background:var(--panel);width:100%;max-width:440px;border-radius:18px 18px 0 0;
+  padding:18px 6px 22px;max-height:72vh;overflow-y:auto;
+  transform:translateY(16px);transition:transform .18s;
+}
+@media (min-width:640px){.sheet{border-radius:18px;transform:translateY(0) scale(.97)}}
+.overlay.open .sheet{transform:translateY(0) scale(1)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;padding:0 14px 14px;border-bottom:1px solid var(--divider);margin-bottom:6px}
+.sheet-head h2{font-size:1rem;font-weight:700;margin:0}
+.sheet-head button{width:34px;height:34px;border-radius:50%;color:var(--muted);display:flex;align-items:center;justify-content:center}
+.sheet-head button:active{background:var(--panel-2)}
+.device-row{width:100%;display:flex;align-items:center;gap:13px;padding:13px 14px;border-radius:12px;text-align:left}
+.device-row:active{background:var(--panel-2)}
+.device-row .d-icon{width:38px;height:38px;border-radius:10px;background:var(--panel-2);display:flex;align-items:center;justify-content:center;flex:none;color:var(--muted)}
+.device-row.active .d-icon{color:var(--signal);background:rgba(111,168,140,.14)}
+.device-row .d-info{flex:1;min-width:0}
+.device-row .d-name{font-size:.92rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.device-row .d-type{font-size:.76rem;color:var(--muted-2)}
+.device-row .d-check{width:18px;height:18px;color:var(--signal);flex:none}
+
+/* ---------------------------------------------------------------------
+   Toast
+--------------------------------------------------------------------- */
+.toast{
+  position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,14px);
+  background:var(--panel-2);border-left:3px solid var(--muted-2);color:var(--paper);
+  padding:12px 18px;border-radius:10px;font-size:.88rem;max-width:88vw;text-align:left;
+  opacity:0;pointer-events:none;transition:.2s;z-index:30;box-shadow:0 10px 24px rgba(0,0,0,.35);
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.error{border-left-color:var(--danger)}
+.toast.success{border-left-color:var(--signal)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wordmark">
+    <svg viewBox="0 0 24 24"><path d="M4 16V8M9 19V5M14 15v-6M19 12V9" stroke-width="2.2"/></svg>
+    <span class="name">Amp</span>
+    <span class="as" id="connectedAs"></span>
+  </div>
+  <div class="topbar-actions" id="topActions" hidden>
+    <button class="tb-btn" id="searchToggleBtn" aria-label="Search"></button>
+    <button class="tb-btn" id="refreshBtn" aria-label="Refresh"></button>
+    <button class="tb-btn" id="fullscreenBtn" aria-label="Toggle fullscreen"></button>
+    <button class="tb-btn" id="logoutBtn" aria-label="Log out"></button>
+  </div>
+</div>
+
+<div id="view"></div>
+
+<div class="overlay" id="deviceOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2>Play on</h2>
+      <button id="closeDevicePanel" aria-label="Close"></button>
+    </div>
+    <div id="deviceList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* -------------------------------------------------------------------
+   Small helpers
+------------------------------------------------------------------- */
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+}[c]));
+const fmtTime = (ms) => {
+  const s = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+};
+
+async function api(url, options) {
+  const r = await fetch(url, options);
+  let d = {};
+  try { d = await r.json(); } catch (_) {}
+  if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+  return d;
+}
+function post(url, body) {
+  return api(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+}
+
+let toastTimer = null;
+function toast(message, kind) {
+  const el = $("toast");
+  el.textContent = message;
+  el.className = "toast show" + (kind ? " " + kind : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
+}
+function reportError(err) { toast(err.message || String(err), "error"); }
+
+/* -------------------------------------------------------------------
+   Icons
+------------------------------------------------------------------- */
+const ICONS = {
+  play:   '<svg class="icon filled" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg>',
+  pause:  '<svg class="icon" viewBox="0 0 24 24"><path d="M7 5v14M17 5v14"/></svg>',
+  prev:   '<svg class="icon filled" viewBox="0 0 24 24"><path d="M6 5v14M18 6L8 12l10 6z"/></svg>',
+  next:   '<svg class="icon filled" viewBox="0 0 24 24"><path d="M18 5v14M6 6l10 6-10 6z"/></svg>',
+  shuffle:'<svg class="icon" viewBox="0 0 24 24"><path d="M3 7h3.2c1.4 0 2.7.7 3.4 1.9L14 17h4"/><path d="M17.5 4H21M21 4l-3-3M21 4l-3 3"/><path d="M3 17h3.2c1.4 0 2.7-.7 3.4-1.9L11 12"/><path d="M17.5 17H21M21 17l-3-3M21 17l-3 3"/></svg>',
+  repeat: '<svg class="icon" viewBox="0 0 24 24"><path d="M4 7h13a3 3 0 0 1 3 3v2"/><path d="M17 4l3 3-3 3"/><path d="M20 17H7a3 3 0 0 1-3-3v-2"/><path d="M7 20l-3-3 3-3"/></svg>',
+  volume: '<svg class="icon" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4Z"/><path d="M16.5 9a5 5 0 0 1 0 6"/></svg>',
+  volumeMute:'<svg class="icon" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4Z"/><path d="M16 9l5 5M21 9l-5 5"/></svg>',
+  search: '<svg class="icon" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>',
+  devices:'<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="14" height="10" rx="1.5"/><path d="M3 18h14"/><path d="M19 9a4 4 0 0 1 0 6"/><path d="M21.5 7a7.5 7.5 0 0 1 0 10"/></svg>',
+  fsEnter:'<svg class="icon" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M21 16v5h-5"/></svg>',
+  fsExit: '<svg class="icon" viewBox="0 0 24 24"><path d="M9 3v5H4M15 3v5h5M9 21v-5H4M15 21v-5h5"/></svg>',
+  logout: '<svg class="icon" viewBox="0 0 24 24"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M14 8l4 4-4 4M18 12H9"/></svg>',
+  heart:  '<svg class="icon" viewBox="0 0 24 24"><path d="M20.8 8.8c0 5-8.8 10.1-8.8 10.1S3.2 13.8 3.2 8.8A4.6 4.6 0 0 1 12 6.2a4.6 4.6 0 0 1 8.8 2.6Z"/></svg>',
+  plus:   '<svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  close:  '<svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  check:  '<svg class="icon" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>',
+  note:   '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  computer:'<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>',
+  phone:  '<svg class="icon" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>',
+  speaker:'<svg class="icon" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="8" r="1.8"/><circle cx="12" cy="16" r="3.4"/></svg>',
+  tv:     '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="1.5"/><path d="M9 21h6M12 17v4"/></svg>',
+  otherDevice:'<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>',
+  refresh:'<svg class="icon" viewBox="0 0 24 24"><path d="M20 11A8 8 0 0 0 6.3 6.3L4 8.6"/><path d="M4 4v4.6h4.6"/><path d="M4 13a8 8 0 0 0 13.7 4.7L20 15.4"/><path d="M20 20v-4.6h-4.6"/></svg>',
+};
+function deviceIcon(type) {
+  const t = (type || "").toLowerCase();
+  if (t === "computer") return ICONS.computer;
+  if (t === "smartphone") return ICONS.phone;
+  if (t === "speaker" || t === "audiodongle") return ICONS.speaker;
+  if (t === "tv" || t === "castvideo" || t === "avr" || t === "stb") return ICONS.tv;
+  return ICONS.otherDevice;
+}
+
+/* -------------------------------------------------------------------
+   State
+------------------------------------------------------------------- */
+const S = {
+  view: "now-playing",
+  playing: false, progress: 0, duration: 0, shuffle: false, repeat: false,
+  track: null, device: null,
+  lastVolume: 50,
+  lastTrackUri: null,
+};
+let statePollTimer = null, queuePollTimer = null, progressTickTimer = null;
+let logoutArmed = false, logoutTimer = null;
+
+/* -------------------------------------------------------------------
+   Boot
+------------------------------------------------------------------- */
+async function boot() {
+  try {
+    const s = await api("/api/session");
+    if (!s.authenticated) { renderLogin(); return; }
+    $("connectedAs").textContent = s.display_name ? "· " + s.display_name : "";
+    $("topActions").hidden = false;
+    showNowPlaying();
+    startPolling();
+    enterKioskFullscreen();
+  } catch (e) {
+    renderLogin("The dashboard couldn't reach its Spotify session. Try again.");
+  }
+}
+
+/* -------------------------------------------------------------------
+   Kiosk fullscreen - most browsers only allow requestFullscreen() from
+   inside a genuine user gesture, so a plain page-load call is often
+   silently blocked. We still try immediately (some kiosk browsers /
+   PWA shells allow it), and if that's blocked we arm a one-time
+   listener so the very first tap on the tablet finishes the job.
+------------------------------------------------------------------- */
+async function tryFullscreen() {
+  if (document.fullscreenElement) return true;
+  try { await document.documentElement.requestFullscreen(); return true; }
+  catch (e) { return false; }
+}
+function enterKioskFullscreen() {
+  tryFullscreen().then((ok) => {
+    if (ok) return;
+    const onFirstTouch = () => {
+      document.removeEventListener("pointerdown", onFirstTouch);
+      tryFullscreen();
+    };
+    document.addEventListener("pointerdown", onFirstTouch, { once: true });
+  });
+}
+
+function renderLogin(message) {
+  stopPolling();
+  $("topActions").hidden = true;
+  $("connectedAs").textContent = "";
+  $("view").innerHTML = `
+    <div class="login-wrap">
+      <div class="login-card">
+        <svg class="login-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 16V8M9 19V5M14 15v-6M19 12V9"/></svg>
+        <h1 class="login-title">Amp</h1>
+        <p class="login-text">Connect your Spotify account to switch devices, search, and control playback from here.</p>
+        <a class="connect-btn" href="/login">${ICONS.play} Connect Spotify</a>
+        ${message ? `<p class="login-error">${esc(message)}</p>` : ""}
+      </div>
+    </div>`;
+}
+
+/* -------------------------------------------------------------------
+   Now playing view
+------------------------------------------------------------------- */
+function showNowPlaying() {
+  S.view = "now-playing";
+  lastQueueKey = ""; // #queueList is being rebuilt from scratch below, so the old diff key is stale
+  $("view").innerHTML = `
+    <div class="stage">
+      <div>
+        <div class="hero">
+          <div class="art-frame" id="artFrame"><div class="art-empty">${ICONS.note}</div></div>
+          <div class="track-info">
+            <p class="track-title" id="trackTitle">Nothing playing</p>
+            <p class="track-artist" id="trackArtist">Pick a device or search for something to play</p>
+
+            <div class="progress-row">
+              <span id="curTime">0:00</span>
+              <input type="range" id="progressRange" min="0" max="1" value="0">
+              <span id="durTime">0:00</span>
+            </div>
+
+            <div class="transport">
+              <button class="toggle-btn" id="shuffleBtn" aria-label="Shuffle">${ICONS.shuffle}</button>
+              <div class="spacer"></div>
+              <button class="tr-btn" id="prevBtn" aria-label="Previous">${ICONS.prev}</button>
+              <button class="tr-btn main" id="playPauseBtn" aria-label="Play or pause">${ICONS.play}</button>
+              <button class="tr-btn" id="nextBtn" aria-label="Next">${ICONS.next}</button>
+              <div class="spacer"></div>
+              <button class="toggle-btn" id="repeatBtn" aria-label="Repeat">${ICONS.repeat}</button>
+            </div>
+
+            <div class="volume-row">
+              <button id="volumeIconBtn" aria-label="Mute">${ICONS.volume}</button>
+              <input type="range" id="volumeRange" min="0" max="100" value="50">
+              <span class="volume-value" id="volumeValue">50</span>
+            </div>
+
+            <button class="like-btn" id="likeBtn">${ICONS.heart}<span>Save to Liked Songs</span></button>
+          </div>
+        </div>
+
+        <button class="device-bar" id="devicePill">
+          <span class="db-icon" id="devicePillIcon">${ICONS.devices}</span>
+          <span class="db-body">
+            <span class="db-name" id="deviceLabel">No device selected</span>
+            <span class="db-sub" id="deviceType">Tap to choose a playback device</span>
+          </span>
+          <span class="db-status" id="deviceStatus"></span>
+          <span class="db-change">${ICONS.devices}</span>
+        </button>
+      </div>
+
+      <div class="rail">
+        <p class="rail-title">Up next</p>
+        <div class="rail-list" id="queueList"><p class="rail-empty">Nothing queued yet.</p></div>
+      </div>
+    </div>`;
+  bindNowPlayingEvents();
+  renderTrack();
+}
+
+function bindNowPlayingEvents() {
+  $("prevBtn").onclick = () => post("/api/previous").then(() => setTimeout(refreshState, 400)).catch(reportError);
+  $("nextBtn").onclick = () => post("/api/next").then(() => setTimeout(refreshState, 400)).catch(reportError);
+  $("playPauseBtn").onclick = () => post("/api/play-pause").then(refreshState).catch(reportError);
+  $("progressRange").onchange = (e) => {
+    const ms = Number(e.target.value);
+    S.progress = ms;
+    post("/api/seek", { position_ms: ms }).catch(reportError);
+  };
+  $("shuffleBtn").onclick = () => {
+    const next = !S.shuffle;
+    post("/api/shuffle", { state: next }).then(() => { S.shuffle = next; paintToggles(); }).catch(reportError);
+  };
+  $("repeatBtn").onclick = () => {
+    const next = !S.repeat;
+    post("/api/repeat", { state: next }).then(() => { S.repeat = next; paintToggles(); }).catch(reportError);
+  };
+  $("volumeRange").oninput = (e) => {
+    $("volumeValue").textContent = e.target.value;
+  };
+  $("volumeRange").onchange = (e) => setVolume(Number(e.target.value));
+  $("volumeIconBtn").onclick = () => {
+    const cur = Number($("volumeRange").value);
+    if (cur > 0) { S.lastVolume = cur; setVolume(0); } else { setVolume(S.lastVolume || 50); }
+  };
+  $("devicePill").onclick = openDevicePanel;
+  $("likeBtn").onclick = likeCurrentTrack;
+}
+
+function setVolume(pct) {
+  $("volumeRange").value = pct;
+  $("volumeValue").textContent = pct;
+  post("/api/volume", { volume_percent: pct }).catch(reportError);
+}
+
+function paintToggles() {
+  $("shuffleBtn").classList.toggle("on", S.shuffle);
+  $("repeatBtn").classList.toggle("on", S.repeat);
+}
+
+function renderTrack() {
+  const t = S.track;
+  $("trackTitle").textContent = t ? t.title : "Nothing playing";
+  $("trackArtist").textContent = t ? t.artist : "Pick a device or search for something to play";
+  const frame = $("artFrame");
+  frame.innerHTML = t && t.art
+    ? `<img src="${esc(t.art)}" alt="">`
+    : `<div class="art-empty">${ICONS.note}</div>`;
+
+  renderDeviceBar();
+
+  $("playPauseBtn").innerHTML = S.playing ? ICONS.pause : ICONS.play;
+  $("progressRange").max = Math.max(1, S.duration);
+  $("progressRange").value = Math.min(S.progress, S.duration || 1);
+  $("curTime").textContent = fmtTime(S.progress);
+  $("durTime").textContent = fmtTime(S.duration);
+  paintToggles();
+
+  if (S.device && typeof S.device.volume_percent === "number") {
+    $("volumeRange").value = S.device.volume_percent;
+    $("volumeValue").textContent = S.device.volume_percent;
+  }
+}
+
+function setLikedUI(saved) {
+  const btn = $("likeBtn");
+  if (!btn) return;
+  btn.classList.toggle("saved", saved);
+  btn.querySelector("span").textContent = saved ? "Saved to Liked Songs" : "Save to Liked Songs";
+}
+
+async function checkLiked(uri) {
+  try {
+    const d = await api("/api/liked-status?uri=" + encodeURIComponent(uri));
+    if (S.track && S.track.uri === uri) setLikedUI(Boolean(d.saved));
+  } catch (e) { /* leave the default (unsaved) heart showing */ }
+}
+
+function renderDeviceBar() {
+  const bar = $("devicePill");
+  if (!bar) return;
+  const d = S.device;
+  bar.classList.toggle("is-active", Boolean(d && d.is_active));
+  $("devicePillIcon").innerHTML = deviceIcon(d && d.type);
+  $("deviceLabel").textContent = d ? d.name : "No device selected";
+  $("deviceType").textContent = d ? (d.type || "Device") : "Tap to choose a playback device";
+  $("deviceStatus").innerHTML = d
+    ? `<span class="db-dot"></span>${S.playing ? "Playing here" : "Connected"}`
+    : "";
+}
+
+async function likeCurrentTrack() {
+  if (!S.track || !S.track.uri || !S.track.uri.startsWith("spotify:track:")) {
+    toast("Nothing playing to save."); return;
+  }
+  const wasSaved = $("likeBtn").classList.contains("saved");
+  try {
+    await post("/api/save", { uri: S.track.uri, remove: wasSaved });
+    setLikedUI(!wasSaved);
+    toast(wasSaved ? `Removed "${S.track.title}" from Liked Songs` : `Added "${S.track.title}" to Liked Songs`, "success");
+  } catch (e) { reportError(e); }
+}
+
+/* -------------------------------------------------------------------
+   Polling: state, queue, and a smooth local progress tick between polls
+------------------------------------------------------------------- */
+async function refreshState() {
+  try {
+    const d = await api("/api/state");
+    if (!d.authenticated) { renderLogin(); return; }
+    if (S.view !== "now-playing") return; // don't touch DOM that isn't mounted
+
+    S.playing = Boolean(d.playing);
+    S.progress = Number(d.progress_ms || 0);
+    S.duration = Number(d.duration_ms || 0);
+    S.shuffle = Boolean(d.shuffle);
+    S.repeat = Boolean(d.repeat);
+    S.track = d.track || null;
+    S.device = d.device || null;
+    renderTrack();
+
+    const uri = S.track && S.track.uri;
+    if (uri !== S.lastTrackUri) {
+      S.lastTrackUri = uri;
+      setLikedUI(false);
+      if (uri) checkLiked(uri);
+    }
+  } catch (e) { /* transient network blip - next poll will recover */ }
+}
+
+function tickProgress() {
+  if (S.view !== "now-playing" || !S.playing || !S.duration) return;
+  S.progress = Math.min(S.duration, S.progress + 500);
+  const el = $("progressRange");
+  if (el) { el.value = S.progress; $("curTime").textContent = fmtTime(S.progress); }
+}
+
+let lastQueue = [];
+let lastQueueKey = "";
+async function refreshQueue() {
+  try {
+    const d = await api("/api/queue");
+    if (S.view !== "now-playing" || !d.authenticated) return;
+    const list = $("queueList");
+    if (!list) return;
+    const queue = (d.queue || []).slice(0, 20);
+    const key = queue.map((t) => t.uri).join("|");
+    if (key === lastQueueKey) return; // unchanged - don't tear down and rebuild the list
+    lastQueueKey = key;
+    lastQueue = queue;
+    if (!lastQueue.length) {
+      list.innerHTML = `<p class="rail-empty">Nothing queued - search to line something up.</p>`;
+      return;
+    }
+    list.innerHTML = lastQueue.map((t, i) => `
+      <button class="rail-item" data-i="${i}" aria-label="Play ${esc(t.title)}">
+        <span class="rail-thumb-wrap">
+          <img class="rail-thumb" src="${esc(t.art || "")}" alt="">
+          <span class="rail-play-overlay">${ICONS.play}</span>
+        </span>
+        <span class="rail-info">
+          <span class="rail-title-text">${esc(t.title)}</span>
+          <span class="rail-sub">${esc(t.artist)}</span>
+        </span>
+      </button>`).join("");
+    list.querySelectorAll(".rail-item").forEach((btn) => {
+      btn.onclick = () => playFromQueue(lastQueue[Number(btn.dataset.i)]);
+    });
+  } catch (e) { /* leave the last known queue on screen */ }
+}
+
+function playFromQueue(t) {
+  if (!t || !t.uri) return;
+  // Deliberately no context_uri/offset here: that would relaunch playback
+  // inside the track's album, which replaces Spotify's actual upcoming
+  // queue with the rest of the album instead of just skipping to this
+  // item. A bare uri just plays the track without touching the queue.
+  post("/api/play-item", { uri: t.uri })
+    .then(() => { toast(`Playing "${t.title}"`, "success"); setTimeout(refreshState, 400); })
+    .catch(reportError);
+}
+
+function startPolling() {
+  stopPolling();
+  refreshState();
+  statePollTimer = setInterval(refreshState, 5000);
+  progressTickTimer = setInterval(tickProgress, 500);
+  if (S.view === "now-playing") {
+    refreshQueue();
+    queuePollTimer = setInterval(refreshQueue, 12000);
+  }
+}
+function stopPolling() {
+  clearInterval(statePollTimer); clearInterval(queuePollTimer); clearInterval(progressTickTimer);
+}
+
+/* -------------------------------------------------------------------
+   Search view
+------------------------------------------------------------------- */
+function showSearch() {
+  S.view = "search";
+  clearInterval(queuePollTimer);
+  $("view").innerHTML = `
+    <div class="search-bar">
+      ${ICONS.search}
+      <input id="searchInput" placeholder="Songs, albums, artists, playlists" autocomplete="off">
+      <button id="searchGo">Search</button>
+    </div>
+    <p class="search-status" id="searchStatus"></p>
+    <div id="searchResults"></div>`;
+  $("searchGo").onclick = runSearch;
+  $("searchInput").onkeydown = (e) => { if (e.key === "Enter") runSearch(); };
+  $("searchInput").focus();
+}
+
+async function runSearch() {
+  const q = $("searchInput").value.trim();
+  const status = $("searchStatus"), results = $("searchResults");
+  if (!q) { status.textContent = ""; results.innerHTML = ""; return; }
+  status.textContent = "Searching…";
+  try {
+    const d = await api("/api/search?q=" + encodeURIComponent(q));
+    const total = d.tracks.length + d.albums.length + d.artists.length + d.playlists.length;
+    if (!total) {
+      status.textContent = "";
+      results.innerHTML = `<p class="empty-state">No matches for "${esc(q)}". Try a different spelling or a shorter search.</p>`;
+      return;
+    }
+    status.textContent = "";
+    results.innerHTML =
+      section("Songs", d.tracks.length, `<div class="song-list">${d.tracks.map(songRow).join("")}</div>`) +
+      section("Albums", d.albums.length, shelf(d.albums, false)) +
+      section("Artists", d.artists.length, shelf(d.artists, true)) +
+      section("Playlists", d.playlists.length, shelf(d.playlists, false));
+    bindResultEvents(d);
+  } catch (e) {
+    status.textContent = "";
+    reportError(e);
+  }
+}
+function section(title, count, html) {
+  return count ? `<div class="sec"><p class="sec-title">${title}</p>${html}</div>` : "";
+}
+function songRow(t, i) {
+  return `
+    <div class="song-row" data-i="${i}">
+      <img class="song-thumb" src="${esc(t.art || "")}" alt="">
+      <div class="song-body">
+        <p class="song-title">${esc(t.title)}</p>
+        <p class="song-sub">${esc(t.artist)}</p>
+      </div>
+      <div class="song-actions">
+        <button class="play-song" data-i="${i}" aria-label="Play">${ICONS.play}</button>
+        <button class="queue-song" data-i="${i}" aria-label="Add to queue">${ICONS.plus}</button>
+      </div>
+    </div>`;
+}
+function shelf(items, circular) {
+  return `<div class="shelf">${items.map((it, i) => `
+    <button class="shelf-item${circular ? " is-artist" : ""}" data-uri="${esc(it.uri)}">
+      <img class="shelf-art" src="${esc(it.art || "")}" alt="">
+      <p class="shelf-name">${esc(it.title || it.name)}</p>
+      ${it.artist ? `<p class="shelf-sub">${esc(it.artist)}</p>` : ""}
+      ${it.owner ? `<p class="shelf-sub">By ${esc(it.owner)}</p>` : ""}
+    </button>`).join("")}</div>`;
+}
+function bindResultEvents(d) {
+  const results = $("searchResults");
+  results.querySelectorAll(".play-song").forEach((btn) => {
+    btn.onclick = (e) => { e.stopPropagation(); playTrack(d.tracks[Number(btn.dataset.i)]); };
+  });
+  results.querySelectorAll(".queue-song").forEach((btn) => {
+    btn.onclick = (e) => { e.stopPropagation(); queueTrack(d.tracks[Number(btn.dataset.i)]); };
+  });
+  results.querySelectorAll(".song-row").forEach((row) => {
+    row.onclick = () => playTrack(d.tracks[Number(row.dataset.i)]);
+  });
+  results.querySelectorAll(".shelf-item").forEach((btn) => {
+    btn.onclick = () => post("/api/play-item", { context_uri: btn.dataset.uri })
+      .then(() => toast("Playing", "success"))
+      .catch(reportError);
+  });
+}
+function playTrack(t) {
+  post("/api/play-item", { context_uri: t.album_uri, offset_uri: t.uri, uri: t.uri })
+    .then(() => toast(`Playing "${t.title}"`, "success"))
+    .catch(reportError);
+}
+function queueTrack(t) {
+  post("/api/queue/add", { uri: t.uri })
+    .then(() => { toast(`Added "${t.title}" to the queue`, "success"); refreshQueue(); })
+    .catch(reportError);
+}
+
+/* -------------------------------------------------------------------
+   View toggle (top bar)
+------------------------------------------------------------------- */
+$("searchToggleBtn").innerHTML = ICONS.search;
+$("refreshBtn").innerHTML = ICONS.refresh;
+$("fullscreenBtn").innerHTML = ICONS.fsEnter;
+$("logoutBtn").innerHTML = ICONS.logout;
+
+$("searchToggleBtn").onclick = () => {
+  const goingToSearch = S.view !== "search";
+  $("searchToggleBtn").classList.toggle("active", goingToSearch);
+  if (goingToSearch) {
+    showSearch();
+  } else {
+    showNowPlaying();
+    refreshState();
+    // showNowPlaying() rebuilds the queue list from scratch and
+    // startPolling() isn't re-run here, so without this the "up next"
+    // rail stays stuck on its empty placeholder until a full page reload.
+    refreshQueue();
+    clearInterval(queuePollTimer);
+    queuePollTimer = setInterval(refreshQueue, 12000);
+  }
+};
+
+$("refreshBtn").onclick = () => location.reload();
+
+/* -------------------------------------------------------------------
+   Device panel
+------------------------------------------------------------------- */
+function openDevicePanel() {
+  $("deviceOverlay").classList.add("open");
+  loadDevices();
+}
+function closeDevicePanel() { $("deviceOverlay").classList.remove("open"); }
+$("closeDevicePanel").innerHTML = ICONS.close;
+$("closeDevicePanel").onclick = closeDevicePanel;
+$("deviceOverlay").onclick = (e) => { if (e.target.id === "deviceOverlay") closeDevicePanel(); };
+
+async function loadDevices() {
+  const list = $("deviceList");
+  list.innerHTML = `<p class="empty-state" style="padding:14px">Looking for devices…</p>`;
+  try {
+    const d = await api("/api/devices");
+    if (!d.devices || !d.devices.length) {
+      list.innerHTML = `<p class="empty-state" style="padding:14px">No devices found. Open Spotify on a computer, phone, or speaker on this network, then check again.</p>`;
+      return;
+    }
+    const sorted = d.devices.slice().sort((a, b) => (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0));
+    list.innerHTML = sorted.map((dev) => `
+      <button class="device-row${dev.is_active ? " active" : ""}" data-id="${esc(dev.id || "")}">
+        <span class="d-icon">${deviceIcon(dev.type)}</span>
+        <span class="d-info">
+          <p class="d-name">${esc(dev.name)}</p>
+          <p class="d-type">${esc(dev.type || "Device")}</p>
+        </span>
+        ${dev.is_active ? `<span class="d-check">${ICONS.check}</span>` : ""}
+      </button>`).join("");
+    list.querySelectorAll(".device-row").forEach((row) => {
+      row.onclick = () => transferTo(row.dataset.id, row.querySelector(".d-name").textContent);
+    });
+  } catch (e) {
+    list.innerHTML = `<p class="empty-state" style="padding:14px">${esc(e.message)}</p>`;
+  }
+}
+async function transferTo(deviceId, name) {
+  if (!deviceId) return;
+  try {
+    await post("/api/devices/transfer", { device_id: deviceId });
+    toast(`Playing on ${name}`, "success");
+    closeDevicePanel();
+    setTimeout(refreshState, 500);
+  } catch (e) { reportError(e); }
+}
+
+/* -------------------------------------------------------------------
+   Fullscreen
+------------------------------------------------------------------- */
+async function toggleFullscreen() {
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+    else await document.exitFullscreen();
+  } catch (e) { toast("Fullscreen isn't available in this browser."); }
+}
+document.addEventListener("fullscreenchange", () => {
+  $("fullscreenBtn").innerHTML = document.fullscreenElement ? ICONS.fsExit : ICONS.fsEnter;
+});
+$("fullscreenBtn").onclick = toggleFullscreen;
+
+/* -------------------------------------------------------------------
+   Logout - tap twice within 3s to confirm, so a stray touch can't sign
+   the dashboard out.
+------------------------------------------------------------------- */
+$("logoutBtn").onclick = () => {
+  if (!logoutArmed) {
+    logoutArmed = true;
+    $("logoutBtn").classList.add("armed");
+    clearTimeout(logoutTimer);
+    logoutTimer = setTimeout(() => { logoutArmed = false; $("logoutBtn").classList.remove("armed"); }, 3000);
+    toast("Tap logout again to confirm.");
+    return;
+  }
+  clearTimeout(logoutTimer);
+  location.href = "/logout";
+};
+
+boot();
+</script>
+</body>
+</html>
