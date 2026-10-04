@@ -1,13 +1,10 @@
 # Amp Kiosk (Android)
 
 A minimal Android wrapper around the Amp dashboard: one fullscreen WebView
-pointed at your `server.py` instance, nothing else. It exists mainly to
-solve what a browser can't do reliably on its own - true immersive
-fullscreen on launch, surviving reboots, and staying pinned to one screen.
+instance, nothing else. Specifically made for old and very low-end devices/tablets to give them another life.
 
 Targets Android 10 (API 29), works down to API 24, and has no dependency
-on Google Play Services - nothing here should care that the Lenovo Tab 4
-10 is running a custom ROM instead of stock Lenovo firmware.
+on Google Play Services.
 
 ## What's in this project
 
