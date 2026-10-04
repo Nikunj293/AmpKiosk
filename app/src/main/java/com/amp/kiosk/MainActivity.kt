@@ -8,6 +8,7 @@ import android.content.SharedPreferences
 import android.graphics.Color
 import android.os.Bundle
 import android.provider.Settings
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -185,6 +186,63 @@ class MainActivity : AppCompatActivity() {
         // browser someone should be able to back out of with one tap.
     }
 
+    /**
+     * The tablet itself has no meaningful audio output in this setup - the
+     * actual sound comes out of whatever Spotify Connect device is
+     * selected. So the hardware volume rocker shouldn't touch the
+     * tablet's media stream at all; it should drive the dashboard's own
+     * volume control, same as dragging the on-screen slider would.
+     */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                adjustRemoteVolume(VOLUME_STEP)
+                return true
+            }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                adjustRemoteVolume(-VOLUME_STEP)
+                return true
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            return true // already handled on key-down - just swallow this so no system beep/UI shows
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    /**
+     * Reaches into the page's own JS state (the global `S` object and
+     * `post()` helper that index.html already defines) rather than
+     * clicking the on-screen slider, so this keeps working even when
+     * the slider isn't currently on screen (e.g. the search view is
+     * open). Degrades silently if the page hasn't loaded yet or isn't
+     * the expected dashboard.
+     */
+    private fun adjustRemoteVolume(delta: Int) {
+        val js = """
+            (function() {
+                try {
+                    if (typeof S === 'undefined' || typeof post !== 'function') return;
+                    var cur = (S.device && typeof S.device.volume_percent === 'number')
+                        ? S.device.volume_percent : 50;
+                    var next = Math.max(0, Math.min(100, cur + ($delta)));
+                    post('/api/volume', { volume_percent: next }).then(function() {
+                        if (S.device) S.device.volume_percent = next;
+                        var r = document.getElementById('volumeRange');
+                        var v = document.getElementById('volumeValue');
+                        if (r) r.value = next;
+                        if (v) v.textContent = next;
+                    });
+                } catch (e) { /* page not ready / not the expected dashboard - ignore */ }
+            })();
+        """.trimIndent()
+        webView.evaluateJavascript(js, null)
+    }
+
     override fun onDestroy() {
         try { stopLockTask() } catch (e: IllegalStateException) { /* wasn't pinned */ }
         webView.destroy()
@@ -198,5 +256,6 @@ class MainActivity : AppCompatActivity() {
         private const val CORNER_HOTSPOT_PX = 150
         private const val TAP_WINDOW_MS = 600L
         private const val TAPS_TO_OPEN_SETTINGS = 5
+        private const val VOLUME_STEP = 5
     }
 }
