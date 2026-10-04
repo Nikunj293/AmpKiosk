@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.amp.kiosk'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "com.amp.kiosk"
+        // minSdk 24 keeps this installable on whatever the Lenovo Tab 4 10's
+        // custom ROM actually reports, even if it's not a perfectly clean
+        // Android 10 build. targetSdk is pinned to 29 (Android 10) to match
+        // the device and avoid behavior changes from newer target SDKs that
+        // this kiosk app has no use for (scoped storage, notif permissions,
+        // etc. - it touches none of that).
+        minSdk 24
+        targetSdk 29
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.core:core-ktx:1.10.1'
+}
