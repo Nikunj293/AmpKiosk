@@ -2,10 +2,13 @@ package com.amp.kiosk
 
 import android.annotation.SuppressLint
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.graphics.Color
+import android.os.BatteryManager
 import android.os.Bundle
 import android.provider.Settings
 import android.view.KeyEvent
@@ -36,6 +39,25 @@ class MainActivity : AppCompatActivity() {
     private var tapCount = 0
     private var lastTapAt = 0L
 
+    // Last known tablet battery reading, cached so it can be re-pushed into
+    // the page once it finishes loading (the first sticky broadcast
+    // usually arrives before the page's JS is ready to receive it).
+    private var lastBatteryPercent = -1
+    private var lastBatteryCharging = false
+
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+            if (level < 0 || scale <= 0) return
+            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            lastBatteryPercent = (level * 100) / scale
+            lastBatteryCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                status == BatteryManager.BATTERY_STATUS_FULL
+            pushBatteryToPage()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -55,7 +77,22 @@ class MainActivity : AppCompatActivity() {
             webView.loadUrl(savedUrl)
         }
 
+        // ACTION_BATTERY_CHANGED is sticky, so registering also delivers the
+        // current reading right away. It can only be registered in code,
+        // not in the manifest, and needs no permission.
+        registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+
         tryPinScreen()
+    }
+
+    /** Sends the cached battery reading into the page's setBatteryUI(). */
+    private fun pushBatteryToPage() {
+        if (lastBatteryPercent < 0 || !::webView.isInitialized) return
+        val charging = if (lastBatteryCharging) "true" else "false"
+        webView.evaluateJavascript(
+            "if (typeof setBatteryUI === 'function') setBatteryUI($lastBatteryPercent, $charging);",
+            null
+        )
     }
 
     @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
@@ -81,6 +118,11 @@ class MainActivity : AppCompatActivity() {
 
         webView.webChromeClient = WebChromeClient()
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                pushBatteryToPage()
+            }
+
             override fun onReceivedError(
                 view: WebView?,
                 request: WebResourceRequest?,
@@ -244,6 +286,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        try { unregisterReceiver(batteryReceiver) } catch (e: IllegalArgumentException) { /* not registered */ }
         try { stopLockTask() } catch (e: IllegalStateException) { /* wasn't pinned */ }
         webView.destroy()
         super.onDestroy()
