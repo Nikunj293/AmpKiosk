@@ -50,6 +50,11 @@ img{-webkit-user-drag:none}
 .wordmark svg{width:22px;height:22px;color:var(--copper)}
 .wordmark .name{font-size:1.15rem;font-weight:800;letter-spacing:-.01em}
 .wordmark .as{color:var(--muted-2);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.battery-pill{display:inline-flex;align-items:center;gap:4px;color:var(--muted-2);font-size:.78rem;
+  font-variant-numeric:tabular-nums;margin-left:4px;flex:none}
+.battery-pill .icon{width:16px;height:16px}
+.battery-pill.charging{color:var(--copper)}
+.battery-pill.low{color:var(--danger)}
 .topbar-actions{display:flex;gap:6px;flex:none}
 .tb-btn{
   width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;
@@ -268,6 +273,7 @@ img{-webkit-user-drag:none}
     <svg viewBox="0 0 24 24"><path d="M4 16V8M9 19V5M14 15v-6M19 12V9" stroke-width="2.2"/></svg>
     <span class="name">Amp</span>
     <span class="as" id="connectedAs"></span>
+    <span class="battery-pill" id="batteryPill" hidden></span>
   </div>
   <div class="topbar-actions" id="topActions" hidden>
     <button class="tb-btn" id="searchToggleBtn" aria-label="Search"></button>
@@ -355,6 +361,8 @@ const ICONS = {
   tv:     '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="1.5"/><path d="M9 21h6M12 17v4"/></svg>',
   otherDevice:'<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>',
   refresh:'<svg class="icon" viewBox="0 0 24 24"><path d="M20 11A8 8 0 0 0 6.3 6.3L4 8.6"/><path d="M4 4v4.6h4.6"/><path d="M4 13a8 8 0 0 0 13.7 4.7L20 15.4"/><path d="M20 20v-4.6h-4.6"/></svg>',
+  battery:'<svg class="icon" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 10v4"/></svg>',
+  batteryCharging:'<svg class="icon" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 10v4"/><path d="M12.5 8.5l-3.2 4.3h2.6l-1 3.2 3.6-4.5h-2.6z" fill="currentColor" stroke="none"/></svg>',
 };
 function deviceIcon(type) {
   const t = (type || "").toLowerCase();
@@ -363,6 +371,36 @@ function deviceIcon(type) {
   if (t === "speaker" || t === "audiodongle") return ICONS.speaker;
   if (t === "tv" || t === "castvideo" || t === "avr" || t === "stb") return ICONS.tv;
   return ICONS.otherDevice;
+}
+
+/* -------------------------------------------------------------------
+   Battery (the kiosk tablet's own charge, not the Spotify device's).
+   setBatteryUI() is the public hook: the Amp Kiosk Android app calls it
+   directly via evaluateJavascript whenever the tablet's battery changes,
+   which is how this actually gets populated in normal use. The
+   navigator.getBattery() block below is just a best-effort fallback so
+   the pill also works when testing this page in a regular desktop
+   browser that still happens to support that (deprecated, increasingly
+   unsupported) API - it's a no-op everywhere else.
+------------------------------------------------------------------- */
+function setBatteryUI(percent, charging) {
+  const pill = $("batteryPill");
+  if (!pill) return;
+  const pct = Math.max(0, Math.min(100, Math.round(Number(percent))));
+  if (Number.isNaN(pct)) return;
+  pill.hidden = false;
+  pill.classList.toggle("charging", Boolean(charging));
+  pill.classList.toggle("low", !charging && pct <= 15);
+  pill.innerHTML = (charging ? ICONS.batteryCharging : ICONS.battery) + `<span>${pct}%</span>`;
+}
+
+if (navigator.getBattery) {
+  navigator.getBattery().then((battery) => {
+    const sync = () => setBatteryUI(battery.level * 100, battery.charging);
+    sync();
+    battery.addEventListener("levelchange", sync);
+    battery.addEventListener("chargingchange", sync);
+  }).catch(() => { /* API present but blocked - ignore, the native bridge may still work */ });
 }
 
 /* -------------------------------------------------------------------
@@ -666,15 +704,28 @@ async function refreshQueue() {
   } catch (e) { /* leave the last known queue on screen */ }
 }
 
-function playFromQueue(t) {
+async function playFromQueue(t) {
   if (!t || !t.uri) return;
-  // Deliberately no context_uri/offset here: that would relaunch playback
-  // inside the track's album, which replaces Spotify's actual upcoming
-  // queue with the rest of the album instead of just skipping to this
-  // item. A bare uri just plays the track without touching the queue.
-  post("/api/play-item", { uri: t.uri })
-    .then(() => { toast(`Playing "${t.title}"`, "success"); setTimeout(refreshState, 400); })
-    .catch(reportError);
+  const list = $("queueList");
+  if (list) list.style.pointerEvents = "none"; // avoid double-taps while Spotify switches tracks
+  try {
+    // Start the song inside its own album/show context (not as a lone
+    // single-track list, which is what made it loop on repeat), then
+    // throw away the cached queue and fetch a fresh one. Spotify takes a
+    // moment to rebuild its queue, so fetch twice.
+    await post("/api/play-item", t.album_uri
+      ? { context_uri: t.album_uri, offset_uri: t.uri, uri: t.uri }
+      : { uri: t.uri });
+    toast(`Playing "${t.title}"`, "success");
+    setTimeout(refreshState, 400);
+    const freshQueue = () => { lastQueueKey = ""; refreshQueue(); };
+    setTimeout(freshQueue, 700);
+    setTimeout(freshQueue, 2000);
+  } catch (e) {
+    reportError(e);
+  } finally {
+    if (list) list.style.pointerEvents = "";
+  }
 }
 
 function startPolling() {
